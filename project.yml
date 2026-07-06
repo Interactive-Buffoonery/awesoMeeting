@@ -1,0 +1,56 @@
+# xcodegen spec — regenerate with `xcodegen generate` after editing this file
+# or adding/removing source files. The .xcodeproj is disposable (gitignored).
+# Info.plist + entitlements are hand-maintained in App/ (single source of truth).
+name: AwesoMeeting
+options:
+  bundleIdPrefix: com.interactivebuffoonery
+  deploymentTarget:
+    macOS: "15.0"
+settings:
+  SWIFT_VERSION: "6.0"
+targets:
+  # Mirrors Package.swift's AwesoMeetingCore module (a local package reference
+  # doesn't resolve when the package root == the project root, so the target is
+  # declared in both manifests; keep them in sync when adding targets).
+  AwesoMeetingCore:
+    type: library.static
+    platform: macOS
+    sources:
+      - Sources/AwesoMeetingCore
+  AwesoMeeting:
+    type: application
+    platform: macOS
+    sources:
+      - Sources/AwesoMeeting
+    dependencies:
+      - target: AwesoMeetingCore
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.interactivebuffoonery.awesomeeting
+        INFOPLIST_FILE: App/Info.plist
+        GENERATE_INFOPLIST_FILE: NO
+        CODE_SIGN_ENTITLEMENTS: App/AwesoMeeting.entitlements
+        CODE_SIGN_STYLE: Automatic
+        DEVELOPMENT_TEAM: 7CNK4YPCQX  # Interactive Buffoonery
+      configs:
+        Debug:
+          ENABLE_HARDENED_RUNTIME: NO  # debugger convenience
+        Release:
+          ENABLE_HARDENED_RUNTIME: YES  # notarization (Homebrew/Gatekeeper) requires it
+  AwesoMeetingTests:
+    type: bundle.unit-test
+    platform: macOS
+    sources:
+      - Tests/AwesoMeetingTests
+    dependencies:
+      - target: AwesoMeeting
+schemes:
+  AwesoMeeting:
+    build:
+      targets:
+        AwesoMeeting: all
+    run:
+      config: Debug
+    test:
+      targets:
+        - AwesoMeetingTests

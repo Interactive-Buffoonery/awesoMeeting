@@ -36,6 +36,28 @@ swift run                              # launch the app
 swift run AwesoMeeting --snapshot <dir>  # Mocha+Latte PNGs for UI review
 ```
 
+App bundle (needed for anything requiring TCC, e.g. audio capture — SPM stays
+the primary path for logic, tests, and fast iteration):
+
+```sh
+xcodegen generate --use-cache   # prerequisite: `brew install xcodegen`.
+                                # Run on fresh clone and after project.yml or file add/remove changes
+xcodebuild -project AwesoMeeting.xcodeproj -scheme AwesoMeeting \
+  -configuration Debug -derivedDataPath .build/xcodebuild -quiet build
+# launch via LaunchServices so TCC attributes permissions to the app, not the
+# terminal; --stdout/--stderr keep output attached:
+open ./.build/xcodebuild/Build/Products/Debug/AwesoMeeting.app \
+  --stdout "$(tty)" --stderr "$(tty)"
+```
+
+The generated `.xcodeproj` is disposable and gitignored; `project.yml` owns the
+project structure. `App/Info.plist` and `App/AwesoMeeting.entitlements` are
+hand-maintained committed files (edit them directly; they must live outside
+`Sources/` or SPM errors on unhandled files). The signed bundle uses the
+Interactive Buffoonery `DEVELOPMENT_TEAM` in project.yml — on a machine without
+that cert, fetch it once with `xcodebuild ... -allowProvisioningUpdates build`
+(needs the team's Apple ID signed in) or substitute your own team ID.
+
 Design rules when touching UI (from the design system, non-negotiable): system
 font for prose, monospace for data; radii ≤ 10; hairline borders; glow/shadows
 vanish under reduced-transparency and increased-contrast; state is color +
