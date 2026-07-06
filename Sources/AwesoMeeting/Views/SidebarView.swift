@@ -1,6 +1,7 @@
 // Sidebar — meeting list (reverse-chronological) + the bottom record footer,
 // the app's continuous status surface.
 
+import AwesoMeetingCore
 import SwiftUI
 
 struct SidebarView: View {

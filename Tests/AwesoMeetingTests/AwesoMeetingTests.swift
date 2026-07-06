@@ -10,7 +10,7 @@ struct AwesoMeetingTests {
         #expect(md.contains("## Notes"))
         #expect(md.contains("> **AI:**")) // AI blocks stay distinct in the export
         #expect(md.contains("## Summary"))
-        #expect(md.contains("- [ ] Own the go/no-go decision — @Marcus, Thu"))
+        #expect(md.contains("- [ ] Own the go/no-go decision (@Marcus, Thu)"))
         #expect(md.contains("**[00:02:14] Sarah:** Let's lock the launch date"))
     }
 
