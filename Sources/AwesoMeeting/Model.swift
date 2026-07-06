@@ -143,12 +143,27 @@ enum AppearanceChoice: String, CaseIterable {
     }
 }
 
+enum SettingsTab: String, CaseIterable {
+    case general, recording, transcription, aiModels = "ai-models", privacy
+
+    var label: String {
+        switch self {
+        case .general: "General"
+        case .recording: "Recording"
+        case .transcription: "Transcription"
+        case .aiModels: "AI Models"
+        case .privacy: "Privacy"
+        }
+    }
+}
+
 @MainActor @Observable
 final class AppModel {
     var meetings: [Meeting]
     var selectedID: String?
     var searchText = ""
     var isRecording = false
+    var settingsTab: SettingsTab = .general // transient; `--snapshot` drives it too
 
     var accent: AwAccent {
         didSet { UserDefaults.standard.set(accent.rawValue, forKey: "accent") }

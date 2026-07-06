@@ -282,10 +282,24 @@ enum AwShadow {
     }
 }
 
+/// Design-system rule: glow/shadows vanish under reduced transparency and
+/// increased contrast. Reading both settings here heals every call site.
+private struct AwShadowModifier: ViewModifier {
+    let style: AwShadow
+    @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
+    @Environment(\.colorSchemeContrast) private var contrast
+
+    func body(content: Content) -> some View {
+        let p = style.parameters
+        let vanish = reduceTransparency || contrast == .increased
+        content.shadow(color: vanish ? .clear : Aw.shadowColor.opacity(p.opacity),
+                       radius: p.radius, y: p.y)
+    }
+}
+
 extension View {
     func awShadow(_ style: AwShadow) -> some View {
-        let p = style.parameters
-        return shadow(color: Aw.shadowColor.opacity(p.opacity), radius: p.radius, y: p.y)
+        modifier(AwShadowModifier(style: style))
     }
 
     /// Hairline-bordered, rounded surface — the standard card/control chrome.

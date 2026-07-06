@@ -54,6 +54,9 @@ struct SegmentedTabs<ID: Hashable>: View {
 
     var tabs: [Tab]
     @Binding var selection: ID
+    /// VoiceOver group label ("Settings section", "Appearance", ...). Optional
+    /// because some call sites sit in rows whose label already provides context.
+    var label: String?
 
     var body: some View {
         HStack(spacing: 2) {
@@ -74,17 +77,48 @@ struct SegmentedTabs<ID: Hashable>: View {
                         .contentShape(RoundedRectangle(cornerRadius: AwRadius.pill))
                 }
                 .buttonStyle(.plain)
+                .accessibilityAddTraits(selected ? .isSelected : [])
                 .if(selected) { $0.awShadow(.handle) }
             }
         }
         .padding(2)
         .awSurface(Aw.surfaceChrome2, radius: AwRadius.button, borderColor: Aw.border)
         .animation(.easeOut(duration: 0.12), value: selection)
+        .accessibilityElement(children: .contain)
+        .if(label != nil) { $0.accessibilityLabel(label ?? "") }
     }
 }
 
 extension View {
     @ViewBuilder func `if`<Content: View>(_ condition: Bool, transform: (Self) -> Content) -> some View {
         if condition { transform(self) } else { self }
+    }
+}
+
+// MARK: - AccentSwatch
+
+/// One accent choice as a clickable color chip; selection = text-colored ring
+/// (shape survives without color). Used by the menu-bar controller + Settings.
+struct AccentSwatch: View {
+    let choice: AwAccent
+    let selected: Bool
+    let action: () -> Void
+
+    var body: some View {
+        Button(action: action) {
+            RoundedRectangle(cornerRadius: 3)
+                .fill(choice.color)
+                .frame(height: 16)
+                .padding(3)
+                .overlay(
+                    RoundedRectangle(cornerRadius: AwRadius.button)
+                        .strokeBorder(selected ? Aw.text1 : .clear, lineWidth: 1.5)
+                )
+                .contentShape(RoundedRectangle(cornerRadius: AwRadius.button))
+        }
+        .buttonStyle(.plain)
+        .help(choice.rawValue)
+        .accessibilityLabel(choice.rawValue)
+        .accessibilityAddTraits(selected ? .isSelected : [])
     }
 }
