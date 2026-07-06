@@ -1,27 +1,15 @@
-// Domain model + app store. The backend (audio capture, on-device
-// transcription, local-LLM enhancement) plugs in behind the protocols at the
-// bottom — the UI only talks to AppModel.
+// App store + SwiftUI glue. Domain types and the backend protocols
+// (Transcriber, NotesEnhancer) live in AwesoMeetingCore — the UI only talks
+// to AppModel.
 
+import AwesoMeetingCore
 import Foundation
 import Observation
 import SwiftUI
 
-// MARK: - Domain types
+// MARK: - SwiftUI-facing extensions on Core types
 
-enum PipelineState: String, Sendable {
-    case recording, transcribing, diarizing, done, error, idle
-
-    var label: String {
-        switch self {
-        case .recording: "Recording"
-        case .transcribing: "Transcribing"
-        case .diarizing: "Diarizing"
-        case .done: "Done"
-        case .error: "Error"
-        case .idle: "Idle"
-        }
-    }
-
+extension PipelineState {
     func color(accent: AwAccent) -> Color {
         switch self {
         case .recording: accent.color
@@ -31,93 +19,6 @@ enum PipelineState: String, Sendable {
         case .error: Aw.statusError
         case .idle: Aw.statusIdle
         }
-    }
-}
-
-struct Speaker: Identifiable, Hashable, Sendable {
-    let id: String
-    var name: String
-    let index: Int
-}
-
-struct NoteBlock: Identifiable, Sendable {
-    enum Kind: Sendable { case user, ai }
-    let id = UUID()
-    let kind: Kind
-    var text: String
-}
-
-struct TranscriptLine: Identifiable, Sendable {
-    let id = UUID()
-    let time: String
-    let speakerID: String
-    var speakerNameOverride: String? // "just this line" rename scope
-    let text: String
-}
-
-struct MeetingSummary: Sendable {
-    struct NextStep: Sendable {
-        let who: String
-        let by: String
-        let task: String
-    }
-
-    var highlights: [String]
-    var decisions: [String]
-    var nextSteps: [NextStep]
-}
-
-struct Meeting: Identifiable, Sendable {
-    let id: String
-    var title: String
-    var dateLabel: String // ponytail: display string like the design's mock data; make it a Date when real recordings land
-    var duration: String
-    var state: PipelineState
-    var speakers: [Speaker]
-    var notes: [NoteBlock]
-    var transcript: [TranscriptLine]
-    var summary: MeetingSummary?
-
-    var isProcessing: Bool {
-        state == .recording || state == .transcribing || state == .diarizing
-    }
-
-    func speakerName(for line: TranscriptLine) -> String {
-        line.speakerNameOverride ?? speakers.first { $0.id == line.speakerID }?.name ?? "Speaker"
-    }
-
-    func speaker(id: String) -> Speaker? {
-        speakers.first { $0.id == id }
-    }
-
-    // Markdown-first: notes, transcript & summary export as plain Markdown.
-    var markdown: String {
-        var out = "# \(title)\n\n`\(dateLabel) · \(duration) · \(speakers.count) speakers · recorded on-device`\n"
-        if !notes.isEmpty {
-            out += "\n## Notes\n\n"
-            for block in notes {
-                switch block.kind {
-                case .user: out += "\(block.text)\n\n"
-                case .ai: out += "> **AI:** \(block.text)\n\n"
-                }
-            }
-        }
-        if let summary {
-            out += "## Summary\n\n### Highlights\n\n"
-            out += summary.highlights.map { "- \($0)\n" }.joined()
-            out += "\n### Decisions\n\n"
-            out += summary.decisions.map { "- \($0)\n" }.joined()
-            out += "\n### Next steps\n\n"
-            out += summary.nextSteps.map { "- [ ] \($0.task) — @\($0.who), \($0.by)\n" }.joined()
-            out += "\n"
-        }
-        if !transcript.isEmpty {
-            out += "## Transcript\n\n"
-            for line in transcript {
-                out += "**[\(line.time)] \(speakerName(for: line)):** \(line.text)\n\n"
-            }
-        }
-        return out
     }
 }
 
@@ -149,6 +50,8 @@ final class AppModel {
     var selectedID: String?
     var searchText = ""
     var isRecording = false
+    var isEnhancing = false
+    var enhanceError: String?
 
     var accent: AwAccent {
         didSet { UserDefaults.standard.set(accent.rawValue, forKey: "accent") }
@@ -231,12 +134,24 @@ final class AppModel {
         update(id) { $0.notes.append(NoteBlock(kind: .user, text: text)) }
     }
 
-    /// AI enhancement never overwrites raw notes — it appends a distinct block.
+    /// AI enhancement never overwrites raw notes: it appends a distinct
+    /// block. Failures never become notes: they land in `enhanceError`.
     func enhanceNotes() {
-        guard let meeting = selectedMeeting else { return }
+        guard !isEnhancing, let meeting = selectedMeeting,
+              meeting.notes.contains(where: { $0.kind == .user }) || !meeting.transcript.isEmpty
+        else { return }
+        isEnhancing = true
         Task {
-            let text = await enhancer.enhance(meeting)
-            update(meeting.id) { $0.notes.append(NoteBlock(kind: .ai, text: text)) }
+            defer { isEnhancing = false }
+            do {
+                let text = try await enhancer.enhance(meeting)
+                update(meeting.id) { $0.notes.append(NoteBlock(kind: .ai, text: text)) }
+                enhanceError = nil
+            } catch is CancellationError {
+                // cancelled on purpose: no note, no error
+            } catch {
+                enhanceError = error.localizedDescription
+            }
         }
     }
 
@@ -263,26 +178,13 @@ final class AppModel {
     }
 }
 
-// MARK: - Backend seams
-// ponytail: mocks. Real implementations later: AVAudioEngine mic + Core Audio
-// process taps for system audio, captured as two separate tracks; FluidAudio
-// (Parakeet) for transcription + diarization on the ANE, whisper.cpp fallback;
-// enhancement through the tiered model system (bundled Gemma 4 via MLX →
-// OpenAI-compatible endpoint → external CLI pipe).
-
-struct TranscriptionResult: Sendable {
-    let speakers: [Speaker]
-    let transcript: [TranscriptLine]
-    let summary: MeetingSummary?
-}
-
-protocol Transcriber: Sendable {
-    func transcribe(meetingID: String) async -> TranscriptionResult
-}
-
-protocol NotesEnhancer: Sendable {
-    func enhance(_ meeting: Meeting) async -> String
-}
+// MARK: - Backend seam mocks
+// ponytail: the protocols live in AwesoMeetingCore. Real implementations
+// later: AVAudioEngine mic + Core Audio process taps for system audio,
+// captured as two separate tracks; FluidAudio (Parakeet) for transcription +
+// diarization on the ANE, whisper.cpp fallback; enhancement through the
+// tiered model system (bundled Gemma 4 via MLX → OpenAI-compatible endpoint
+// [EndpointNotesEnhancer, done] → external CLI pipe).
 
 struct MockTranscriber: Transcriber {
     func transcribe(meetingID: String) async -> TranscriptionResult {
@@ -302,8 +204,8 @@ struct MockTranscriber: Transcriber {
 }
 
 struct MockNotesEnhancer: NotesEnhancer {
-    func enhance(_ meeting: Meeting) async -> String {
-        try? await Task.sleep(for: .seconds(0.8))
+    func enhance(_ meeting: Meeting) async throws -> String {
+        try await Task.sleep(for: .seconds(0.8))
         return "Meeting notes enhanced — key points structured and action items extracted into the AI Summary tab."
     }
 }

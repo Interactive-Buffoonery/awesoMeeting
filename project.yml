@@ -42,8 +42,16 @@ targets:
     platform: macOS
     sources:
       - Tests/AwesoMeetingTests
+    settings:
+      GENERATE_INFOPLIST_FILE: YES
     dependencies:
       - target: AwesoMeeting
+      # link: false because Core is already statically linked into the host app;
+      # linking it here too duplicates its symbols in both images. The test
+      # bundle resolves Core through the bundle loader, and the dependency
+      # still builds the module for @testable import.
+      - target: AwesoMeetingCore
+        link: false
 schemes:
   AwesoMeeting:
     build:

@@ -2,6 +2,7 @@
 // rename is a first-class flow: click a SpeakerTag → popover with a name
 // field and "just this line" vs "all N lines" scope.
 
+import AwesoMeetingCore
 import SwiftUI
 
 enum DetailTab: Hashable {

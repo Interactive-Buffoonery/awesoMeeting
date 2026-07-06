@@ -2,6 +2,7 @@
 // State is color + SHAPE, never color alone — it must survive color-blindness
 // and reduce-motion.
 
+import AwesoMeetingCore
 import SwiftUI
 
 // MARK: - StatusDot

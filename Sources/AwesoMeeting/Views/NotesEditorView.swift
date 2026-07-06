@@ -2,6 +2,7 @@
 // clearly distinct (lavender gutter + wash + AI kicker) and never overwrite
 // the user's raw notes.
 
+import AwesoMeetingCore
 import SwiftUI
 
 struct NotesEditorView: View {
@@ -44,16 +45,32 @@ struct NotesEditorView: View {
                         model.enhanceNotes()
                     } label: {
                         HStack(spacing: 6) {
-                            Image(systemName: "sparkles")
-                                .font(.system(size: 11))
-                                .foregroundStyle(accent.color)
+                            if model.isEnhancing {
+                                ProgressView()
+                                    .controlSize(.mini)
+                            } else {
+                                Image(systemName: "sparkles")
+                                    .font(.system(size: 11))
+                                    .foregroundStyle(accent.color)
+                            }
                             Text("Enhance notes")
                         }
                     }
                     .buttonStyle(.awPrimary)
+                    .disabled(model.isEnhancing)
                 }
             }
             metaLine
+            if let error = model.enhanceError {
+                HStack(spacing: 5) {
+                    Image(systemName: "exclamationmark.triangle")
+                        .font(.system(size: 10))
+                    Text(error)
+                        .lineLimit(2)
+                }
+                .font(AwFont.monoMeta)
+                .foregroundStyle(Aw.statusError)
+            }
         }
         .padding(.init(top: AwSpace.panelPadding, leading: AwSpace.panelPadding,
                        bottom: 12, trailing: AwSpace.panelPadding))

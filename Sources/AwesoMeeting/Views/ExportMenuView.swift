@@ -1,6 +1,7 @@
 // ExportMenu — the Share affordance. Markdown-first, surfaced in-product:
 // notes, transcript & summary are plain Markdown, yours to keep.
 
+import AwesoMeetingCore
 import SwiftUI
 import AppKit
 import UniformTypeIdentifiers

@@ -13,6 +13,6 @@ let package = Package(
             dependencies: ["AwesoMeetingCore"],
             path: "Sources/AwesoMeeting"
         ),
-        .testTarget(name: "AwesoMeetingTests", dependencies: ["AwesoMeeting"]),
+        .testTarget(name: "AwesoMeetingTests", dependencies: ["AwesoMeeting", "AwesoMeetingCore"]),
     ]
 )
