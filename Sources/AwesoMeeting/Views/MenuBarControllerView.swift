@@ -70,25 +70,3 @@ struct MenuBarControllerView: View {
         .background(Aw.surfaceElevated)
     }
 }
-
-private struct AccentSwatch: View {
-    let choice: AwAccent
-    let selected: Bool
-    let action: () -> Void
-
-    var body: some View {
-        Button(action: action) {
-            RoundedRectangle(cornerRadius: 3)
-                .fill(choice.color)
-                .frame(height: 16)
-                .padding(3)
-                .overlay(
-                    RoundedRectangle(cornerRadius: AwRadius.button)
-                        .strokeBorder(selected ? Aw.text1 : .clear, lineWidth: 1.5)
-                )
-                .contentShape(RoundedRectangle(cornerRadius: AwRadius.button))
-        }
-        .buttonStyle(.plain)
-        .help(choice.rawValue)
-    }
-}
