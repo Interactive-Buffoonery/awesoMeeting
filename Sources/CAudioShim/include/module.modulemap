@@ -1,0 +1,4 @@
+module CAudioShim {
+    header "CAudioShim.h"
+    export *
+}

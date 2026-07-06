@@ -5,6 +5,19 @@ import SwiftUI
 import AppKit
 
 @main
+enum Main {
+    static func main() {
+        // Headless capture diagnostic (--capture-check) runs before any UI;
+        // exit code comes from the check. See CaptureCheck.swift.
+        if let config = CaptureCheck.parseOrExit(CommandLine.arguments) {
+            Task { exit(await CaptureCheck.run(config)) }
+            dispatchMain() // parked until the Task above calls exit()
+        } else {
+            AwesoMeetingApp.main()
+        }
+    }
+}
+
 struct AwesoMeetingApp: App {
     @State private var model = AppModel()
 

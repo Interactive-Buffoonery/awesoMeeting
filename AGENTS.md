@@ -48,6 +48,11 @@ xcodebuild -project AwesoMeeting.xcodeproj -scheme AwesoMeeting \
 # terminal; --stdout/--stderr keep output attached:
 open ./.build/xcodebuild/Build/Products/Debug/AwesoMeeting.app \
   --stdout "$(tty)" --stderr "$(tty)"
+# capture diagnostic (per-track status once a second; exits nonzero if a
+# track never flowed):
+open ./.build/xcodebuild/Build/Products/Debug/AwesoMeeting.app \
+  --stdout "$(tty)" --stderr "$(tty)" \
+  --args --capture-check 12 --everything --out /tmp/capture-check
 ```
 
 The generated `.xcodeproj` is disposable and gitignored; `project.yml` owns the

@@ -8,7 +8,19 @@ options:
     macOS: "15.0"
 settings:
   SWIFT_VERSION: "6.0"
+  # Lets Swift targets `import CAudioShim` via its module.modulemap.
+  SWIFT_INCLUDE_PATHS: $(SRCROOT)/Sources/CAudioShim/include
 targets:
+  # Obj-C NSException shim consumed by AwesoMeetingCore; mirrored in
+  # Package.swift (keep in sync).
+  CAudioShim:
+    type: library.static
+    platform: macOS
+    sources:
+      - Sources/CAudioShim
+    settings:
+      base:
+        HEADER_SEARCH_PATHS: $(SRCROOT)/Sources/CAudioShim/include
   # Mirrors Package.swift's AwesoMeetingCore module (a local package reference
   # doesn't resolve when the package root == the project root, so the target is
   # declared in both manifests; keep them in sync when adding targets).
@@ -17,6 +29,8 @@ targets:
     platform: macOS
     sources:
       - Sources/AwesoMeetingCore
+    dependencies:
+      - target: CAudioShim
   AwesoMeeting:
     type: application
     platform: macOS
@@ -24,6 +38,8 @@ targets:
       - Sources/AwesoMeeting
     dependencies:
       - target: AwesoMeetingCore
+      # static libs don't link transitively; the app must link the shim too
+      - target: CAudioShim
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.interactivebuffoonery.awesomeeting
@@ -44,6 +60,7 @@ targets:
       - Tests/AwesoMeetingTests
     dependencies:
       - target: AwesoMeeting
+      - target: AwesoMeetingCore
 schemes:
   AwesoMeeting:
     build:

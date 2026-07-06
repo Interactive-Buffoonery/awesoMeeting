@@ -7,12 +7,16 @@ let package = Package(
     name: "awesoMeeting",
     platforms: [.macOS(.v15)],
     targets: [
-        .target(name: "AwesoMeetingCore"),
+        // Obj-C shim: catches the NSExceptions AVFoundation raises (Swift
+        // can't), see CAudioShim.h. Separate target because SPM can't mix
+        // languages in one.
+        .target(name: "CAudioShim"),
+        .target(name: "AwesoMeetingCore", dependencies: ["CAudioShim"]),
         .executableTarget(
             name: "AwesoMeeting",
             dependencies: ["AwesoMeetingCore"],
             path: "Sources/AwesoMeeting"
         ),
-        .testTarget(name: "AwesoMeetingTests", dependencies: ["AwesoMeeting"]),
+        .testTarget(name: "AwesoMeetingTests", dependencies: ["AwesoMeeting", "AwesoMeetingCore"]),
     ]
 )
